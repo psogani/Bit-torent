@@ -1,0 +1,45 @@
+					                    CN Project 3 : Bit-Torrent
+									                Submitted by-Pranay Sogani & Mahesh Kukreja (mlkukrej)
+									                Group  : 14
+Explanation and Technical Details of Functions implemented:-
+
+In bit_lib.c
+
+1. calc_id() function calculates the SHA1 hash of IP address and port combination of a peer. IP address and port are first written to a char array and SHA1 hash of thie char array is calculated.
+
+2. init_peer() function initializes the peer structure with the peer IP address and port, and it initializes the socketDescriptor variable to -1. When a connection is established with the server, the socketDescriptor variable is changed to reflect the value of the socket that the client is currently connected to.
+
+3. print_peer() function prints IP address, port number, and hex ID of a peer. These values are stored in a peer structure and are retrieved for printing.
+
+4. parse_bt_info() function parses the bencoded tree that is created by calling the function load_be_node(). The parse_bt_info() function takes a node and compares the node->type with BE_STR, BE_INT, and BE_DICT. It accordingly parses the value of announce string, number of pieces, piece length, hash of each piece, etc. The parsed values are stored in variables of bt_info structure.
+
+5. listen_mode() function is called in main() and it creates a socket for client/server. It calls setsockopt() function to make the socket reusable. If server is started, then this function binds the socket and sets the socket in listen mode. The function returns the socket descriptor of the socket.
+
+6. client_mode() function handles the functionality of a client that wants to download files from the server. It first connects to the server socket and sends its handshake to the server. When server receives the handshake, it compares it and sends its ID. The client compares the ID with one it has already computed before. If the IDs match, it starts the process to create a BT_REQUEST message. The client populates a variable of bt_msg_t structure with piece index, piece length, piece begin, etc. The request message is sent to the server and the server packs a BT_PIECE message containing the piece. The client extracts the payload data from this message, compares the piece index and writes it to the file on hard disk. At the same time displayProgress() function is called that displays the amount of data downloaded in KB and percentage.
+
+7. server_mode() function uses fd_set's variable to determine the activity of connection request by client or message sent by client. If there is a connection request, the server accepts it, and calls init_peer() and add_peer() function to initialize the peer structure and add the peer to server's peer list. Then server performs handshake verification by first receiving handshake request from the client. If the request is proper, the server sends a handshake reply that contains its ID to the client. The server than iterates in a for loop waiting for messages from the client. If there is an activity on the socket, the server reads the message and determines the message type. If the server sends BT_REQUEST type message, the client checks the request for the piece index, piece length, etc. It creates a new bt_msg variable and populates it with the piece index, piece length, and payload data. The message is of type BT_PIECE. This message is sent to the client. If there's any error while sending it, the server drops the client from its peer list and waits for another client to connect.
+
+8. save_piece() function is called by the client. Whenever a client receives a BT_PIECE message from the server, it calls save_piece() function to write the piece to the file. save_piece() function compares the hash of the received piece with the hash that is already present in bt_info structure. If the hash matches, the function opens the file and writes the payload data to the file. The file is closed and 0 is returned on success.
+
+9. load_piece() function is called by the server. When a client sends a BT_REQUEST message, the server calls the load_piece() function to load a particular piece from a file using the piece index and piece length parameters. The loaded piece is then sent to the client by creating a message of type BT_PIECE.
+
+10. send_to_peer() function is called by both the server and client to send messages to each other. This function takes the message and writes it on the socket 1000 bytes at a time. The function checks if sending was successful, otherwise if the peer is disconnected, it displays the appropriate message.
+
+11. read_from_peer() function reads messages from peers. It initially reads the number of bytes that a peer is about to send and iterates in a loop that number of times. If there is some problem while reading, the function displays an appropriate error message and returns -1.
+
+12. sha1_piece() function calculates the hash of the piece. The client calls this function to calculate hash of the piece that server sends it. It also prints the calculated hash in hex format. On success, the function returns 0.
+
+13. int add_peer(peer_t *peer, bt_args_t *bt_args, char * hostname, unsigned short port, int socketDescriptor): This function is used to add a peer to the array of peers which is stored in the structure peer_t peer.So basically in this function a for loop is used from 0 to the maximum allowed connctions and whenever an index in peers i.e peers[i] is found to be empty the requesting peer is  added to it by inserting the peer's socket Descriptor in that position.
+
+14. int drop_peer(peer_t *peer, bt_args_t *bt_args): This function is pretty similar to its add_peer counterpart accept that it has an exactly opposite functionality. This function again runs a loop to check from i=0 to i=MAX_CONNECTIONS but here instead of checking for an empty slot like add_peer, this function looks for an already occupied spot. If found, that spot is emptied by removing its socket descriptor from its position.
+
+15. char * generateHandshake(bt_args_t *bt_args): This function generates a handshake that is to be sent from a client to the server in order to establish a TCP connection. This is done by sending a message "\23BitTorrent Protocol" across to the server or the peer with which the initiator wishes to communicate.We precede the message with "\23".This is octal equivalent for decimal number 19. We use this to signify the size of the message. We take a buffer "hashGen" in which we store the above message before sending it across. The "\x00\x00\x00\x00\x00\x00\x00\x00" notation is to signify reserved space that may or may not be used. We use memcpy function to transger the above strings to our buffer. Strncpy and strcpy functions can also be used but we find memcpy to be more flexible in the sense that it continues to copy even if it encounters a NULL terminating character "\0".
+
+16. int compareHandshake(char * received, char * original) : This function is invoked by the receiving peer/server in order to make sure that it is communicating with the correct and legitimate initiator. Here we use 2 character buffers "received" and "original" which store and compare the handshake respectively. If the handshake is found to be valid the peer is informed after which it can proceed to the next step.
+
+17. void displayProgress(int messageLength, bt_args_t * bt_args) : This function basically displays the current status of the ongoing download. It displays the amount of the received file downloaded both in terms of percentage and size in KB. The percentage is simply calculated by dividing the piece_length downloaded with the the total messageLength and multiplying with 100. This function also displays the number of peers in the connection and the name of the file which is being accessed. All this information is stored in the bt_args structure which is why we have passed it as a parameter to the function.
+
+
+In bt_client.c
+
+In bt_client.c, initially a port number is selected from the provided port numbers. Then, the program checks for pFlag. If it is set, the program invokes the client side of the program. If it is not set, the program invokes the server side of the program.
